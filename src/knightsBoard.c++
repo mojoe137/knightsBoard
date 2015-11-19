@@ -1,13 +1,16 @@
-#include<fstream>
-#include<iostream>
-#include<vector>
-#include<unistd.h> 
-#include<stdlib.h>
-#include"Map.h"
-#include"DistanceMap.h"
+#include <fstream>
+#include <iostream>
+#include <vector>
+#include <unistd.h> 
+#include <stdlib.h>
+#include <locale>
+#include <stack>
+#include "Map.h"
+#include "DistanceMap.h"
 
 using namespace std;
 
+bool deadEnd(int*, Map&);
 bool checkMove(int *,int *);
 bool checkMove(int *,int *, Map&);
 int checkLanding(int *, Map&);
@@ -17,34 +20,46 @@ void teleport(int&,int&,Map&);
 void teleport(int*,Map&);
 void findPathRandom(ostream&, Map&, int *,int *);
 void findPathDA(ostream&, Map&, DistanceMap&, int *, int *);
-bool deadEnd(int*, Map&);
+void readConfigFile(const char*,int *, int *, char*, int&, bool&);
 ostream& operator<<(ostream&, Map&);
 ostream& operator<<(ostream&, DistanceMap&);
 
 int main(int argc, char** argv){
-  char mapFileName[]="data/mapFile.txt";
+  int start[]={0,0};
+  int end[]={7,7};
+  char mapFileName[100];
+  int method=0;
+  bool print=true;
+
+  const char *configFile=(argc==2)?argv[1]:"config/default.cfg";
+  readConfigFile(configFile,start,end,mapFileName,method,print);
+
   Map map(mapFileName);
   Map mapClean(mapFileName);
   int sizeX=map.getXsize(), sizeY=map.getYsize();
   DistanceMap dmap(sizeX,sizeY);
-  const char *filename=(argc==2)?argv[1]:"data/move.txt";
-  ofstream guess(filename);
-  int start[]={21,21};
-  int end[]={0,31};
+
   mapClean.flip(start,'S');
   mapClean.flip(end,'E');
-//  findPathDA(guess, map, dmap, start, end);
-  findPathRandom(guess, map, start, end);
+
+  char filename[]="data/move.txt";
+  ofstream guess(filename);
+  if(method==1){
+    findPathRandom(guess, map, start, end);
+  }else { 
+    findPathDA(guess, map, dmap, start, end);
+  } 
   guess.close(); 
     
   ifstream move(filename);
-  playMoves(move,mapClean);
+  if(print) playMoves(move,mapClean);
+  else cout << "path file is here: " << filename << endl;
   move.close();
 
   return(0);
 }
 
-void findPathDA(ostream &out, Map &map, DistanceMap &dmap, int* start, int* end, bool longest){
+void findPathDA(ostream &out, Map &map, DistanceMap &dmap, int* start, int* end){
   map.flip(start,'S');
   map.flip(end,'E');
   int const dx[]={-2,-2,-1,-1,1,1,2,2};
@@ -157,8 +172,6 @@ void findPathRandom(ostream& out, Map &map, int* start, int* end){
       map.flip(start,'R');
       start[0]=newx;
       start[1]=newy;
-      cout << map << endl;
-
       out << start[0] << " " << start[1] << endl;
     }
   }
@@ -298,4 +311,42 @@ void teleport(int &xtmp, int &ytmp,  Map &map){
 
 void teleport(int* point, Map &map){
   teleport(point[0],point[1],map);
+}
+
+void readConfigFile(const char* fileName,int *start, int *end, char* mapFile, int &method, bool &print){
+  ifstream cfgFile(fileName);
+  
+  char tmp[3]={0,0,0};
+  cfgFile.read(tmp,3);
+  while(!cfgFile.eof()){
+    if(tmp[2]==':'){
+      char trash;
+      if(tmp[1]=='t'&&tmp[0]=='r'){
+        cfgFile >> start[0];
+        if(cfgFile.peek()==',' || cfgFile.peek()==' ') cfgFile.get(trash);
+        cfgFile >> start[1];
+      }if(tmp[1]=='d'&&tmp[0]=='n'){
+        cfgFile >> end[0];
+        if(cfgFile.peek()==',' || cfgFile.peek()==' ') cfgFile.get(trash);
+        cfgFile >> end[1];
+      }if(tmp[1]=='p'&&tmp[0]=='a'){
+        while(cfgFile.peek()==' '){
+          cfgFile.get(trash);
+        }
+        cfgFile.getline(mapFile,100);
+      }if(tmp[1]=='d'&&tmp[0]=='o'){
+        cfgFile >> method;
+      }if(tmp[1]=='t'&&tmp[0]=='n'){
+        while(cfgFile.peek()==' '){
+          cfgFile.get(trash);
+        }
+        cfgFile.get(trash);
+        if(trash=='t'||trash=='T'){ print=true;}
+        else{ print=false;}
+      }
+    }
+    tmp[0]=tmp[1];
+    tmp[1]=tmp[2];
+    cfgFile.get(tmp[2]);
+  }
 }

@@ -25,16 +25,12 @@ DistanceMap::DistanceMap(int nx,int ny){
 DistanceMap::~DistanceMap(){
   for(int i=0; i<_nx; i++){
     for(int j=0; j<_ny; j++){
-      for(int k=0; k<(_nMap[i][j]+1);k++){
-        delete[] _pathMap[i][j][k];
-      }
       delete[] _pathMap[i][j];
     }
     delete[] _map[i];
     delete[] _nMap[i];
     delete[] _pathMap[i];
   }
-
   delete[] _map;
   delete[] _nMap;
   delete[] _pathMap;
